@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#08182b">
+<title>JetskiBlanes · Control de motos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08182b;
+    --bg-2:#0c2440;
+    --surface:#102c4c;
+    --surface-2:#16375c;
+    --line:#1e456e;
+    --ink:#eaf3fb;
+    --ink-dim:#7fa2c4;
+    --ink-faint:#54749a;
+    --alert:#ffb020;
+    --alert-deep:#ff7a1a;
+    --sea:#2dd4bf;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 500px at 50% -200px, #123a63 0%, transparent 60%),
+      linear-gradient(180deg,#08182b 0%,#061321 100%);
+    color:var(--ink);
+    min-height:100%;
+    padding:clamp(14px,3vw,32px);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;align-items:center;gap:16px;
+    padding-bottom:18px;margin-bottom:22px;
+    border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  .logo-slot{
+    width:112px;height:60px;border-radius:12px;flex:none;
+    display:grid;place-items:center;text-align:center;
+    background:var(--surface);border:1px dashed var(--line);
+    color:var(--ink-dim);font-size:11px;letter-spacing:.16em;font-weight:600;
+    text-transform:uppercase;line-height:1.3;
+  }
+  .logo-slot img{max-width:100%;max-height:100%;display:block;border-radius:10px}
+  .brand{display:flex;flex-direction:column;gap:2px;margin-right:auto}
+  .brand h1{font-size:clamp(20px,3.4vw,28px);font-weight:700;letter-spacing:-.01em}
+  .brand h1 span{color:var(--sea)}
+  .brand p{font-size:12px;color:var(--ink-dim);letter-spacing:.02em}
+  .head-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .clock{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;
+    color:var(--ink);background:var(--surface);border:1px solid var(--line);
+    padding:9px 12px;border-radius:10px;font-variant-numeric:tabular-nums;
+  }
+  .pill{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:12px;font-weight:600;color:var(--ink-dim);
+    background:var(--surface);border:1px solid var(--line);
+    padding:9px 12px;border-radius:10px;cursor:pointer;user-select:none;
+  }
+  .pill:hover{border-color:#2b5583}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--sea);box-shadow:0 0 10px var(--sea)}
+  .pill.off .dot{background:#3f5f83;box-shadow:none}
+
+  /* ---------- Grid ---------- */
+  .grid{display:grid;gap:12px}
+  .row{
+    display:grid;
+    grid-template-columns:118px 1fr 320px;
+    align-items:center;gap:16px;
+    background:linear-gradient(180deg,var(--surface),var(--bg-2));
+    border:1px solid var(--line);border-left:5px solid var(--moto,#39557a);
+    border-radius:16px;padding:14px 16px;
+    transition:border-color .2s,box-shadow .2s,transform .06s;
+  }
+  .row.running{box-shadow:var(--shadow),0 0 0 1px var(--moto) inset}
+  .row.done{border-color:var(--alert);animation:flash 1.1s ease-in-out infinite}
+  @keyframes flash{
+    0%,100%{box-shadow:0 0 0 1px rgba(255,176,32,.25) inset}
+    50%{box-shadow:0 0 0 2px var(--alert) inset,0 0 26px rgba(255,176,32,.35)}
+  }
+
+  /* start/stop color button */
+  .start{
+    position:relative;height:82px;border-radius:14px;border:none;cursor:pointer;
+    background:var(--moto);display:grid;place-items:center;color:#fff;
+    box-shadow:0 6px 16px rgba(0,0,0,.3), inset 0 0 0 2px rgba(255,255,255,.14);
+    transition:transform .08s,filter .15s;
+  }
+  .start:active{transform:scale(.97)}
+  .start:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  .start .glyph{
+    width:34px;height:34px;display:grid;place-items:center;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));
+  }
+  .start .glyph svg{width:100%;height:100%}
+  .start .hint{
+    position:absolute;bottom:7px;font-size:10px;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;color:rgba(255,255,255,.85);
+  }
+
+  /* name */
+  .name-cell{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .name-cell .lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+  .name-row{display:flex;align-items:center;gap:8px}
+  .name{
+    font-size:clamp(17px,2.6vw,22px);font-weight:600;color:var(--ink);
+    background:transparent;border:none;border-bottom:1.5px dashed transparent;
+    padding:2px 0;width:100%;min-width:0;font-family:inherit;
+  }
+  .name:hover{border-bottom-color:var(--line)}
+  .name:focus{outline:none;border-bottom-color:var(--sea)}
+  .swatch{
+    width:22px;height:22px;border-radius:6px;flex:none;cursor:pointer;
+    border:2px solid rgba(255,255,255,.3);position:relative;overflow:hidden;
+  }
+  .swatch input{position:absolute;inset:-6px;opacity:0;cursor:pointer}
+
+  /* right cell: selector <-> countdown */
+  .right{min-height:82px;display:flex;align-items:center;justify-content:flex-end}
+
+  .selector{display:flex;gap:8px;width:100%}
+  .chip{
+    flex:1;padding:0;height:56px;border-radius:11px;cursor:pointer;
+    background:var(--surface-2);border:1px solid var(--line);color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    transition:.12s;
+  }
+  .chip small{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--ink-faint);font-family:'Space Grotesk',sans-serif}
+  .chip:hover{border-color:#2b5583;color:var(--ink)}
+  .chip.sel{background:var(--moto);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(0,0,0,.28)}
+  .chip.sel small{color:rgba(255,255,255,.85)}
+  .chip:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+
+  .countdown{width:100%;display:flex;flex-direction:column;gap:8px}
+  .cd-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .cd-time{
+    font-family:'JetBrains Mono',monospace;font-weight:800;
+    font-size:clamp(34px,7vw,46px);line-height:1;letter-spacing:-.02em;
+    color:var(--moto);font-variant-numeric:tabular-nums;
+  }
+  .cd-status{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+  .row.done .cd-time{color:var(--alert)}
+  .row.done .cd-status{color:var(--alert)}
+  .cd-bar{height:8px;border-radius:6px;background:var(--surface-2);overflow:hidden}
+  .cd-fill{height:100%;background:var(--moto);border-radius:6px;transition:width .25s linear}
+  .row.done .cd-fill{background:var(--alert)}
+
+  footer{margin-top:22px;text-align:center;color:var(--ink-faint);font-size:12px}
+  footer code{color:var(--sea);font-family:'JetBrains Mono',monospace}
+
+  /* ---------- Responsive (móvil en el muelle) ---------- */
+  @media(max-width:720px){
+    .row{grid-template-columns:96px 1fr;grid-template-areas:"btn name" "btn right";gap:8px 14px}
+    .start{grid-area:btn;height:100%;min-height:96px}
+    .name-cell{grid-area:name}
+    .right{grid-area:right;min-height:0;justify-content:stretch}
+    .chip{height:48px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo-slot" id="logoSlot" title="Sustituye esto por el logo de JetskiBlanes">
+      LOGO<br>JetskiBlanes
+    </div>
+    <div class="brand">
+      <h1>Jetski<span>Blanes</span></h1>
+      <p>Control de alquiler · Costa Brava</p>
+    </div>
+    <div class="head-tools">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="pill" id="soundBtn" role="button" tabindex="0" aria-label="Activar o desactivar sonido">
+        <span class="dot"></span><span id="soundLbl">Aviso sonoro</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    Prototipo local · el estado en tiempo real se sincroniza al conectar el backend de Azure (<code>endTime</code> compartido).
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // --- Configuración de las motos (nombre + color). Editable en pantalla y persistente. ---
+  const DEFAULTS = [
+    { id:"m1", name:"Moto 1", color:"#22c55e" },
+    { id:"m2", name:"Moto 2", color:"#3b5bdb" },
+    { id:"m3", name:"Moto 3", color:"#111827" },
+    { id:"m4", name:"Moto 4", color:"#38bdf8" },
+    { id:"m5", name:"Moto 5", color:"#f59e0b" },
+    { id:"m6", name:"Moto 6", color:"#e11d48" },
+  ];
+  const DURATIONS = [15, 30, 45, 60]; // minutos
+  const STORAGE_KEY = "jetskiblanes_state_v1";
+
+  // --- Estado. La clave es endTime: momento (ms epoch) en que acaba. null = parada. ---
+  // Este objeto es EXACTAMENTE lo que luego guardas/sincronizas en Azure.
+  let motos = load();
+
+  function load(){
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e){}
+    return DEFAULTS.map(d => ({
+      ...d,
+      name:  saved[d.id]?.name  ?? d.name,
+      color: saved[d.id]?.color ?? d.color,
+      minutes: saved[d.id]?.minutes ?? 15,
+      endTime: saved[d.id]?.endTime ?? null,   // ms epoch o null
+    }));
+  }
+  function save(){
+    try {
+      const out = {};
+      motos.forEach(m => out[m.id] = {name:m.name,color:m.color,minutes:m.minutes,endTime:m.endTime});
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(out));
+    } catch(e){}
+  }
+
+  // --- Sonido (WebAudio, se arma al primer gesto por políticas de autoplay) ---
+  let soundOn = true, audioCtx = null;
+  function beep(){
+    if(!soundOn) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      [0,0.18,0.36].forEach(t=>{
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type="sine"; o.frequency.value=880;
+        g.gain.setValueAtTime(0.0001, now+t);
+        g.gain.exponentialRampToValueAtTime(0.4, now+t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now+t+0.15);
+        o.connect(g).connect(audioCtx.destination);
+        o.start(now+t); o.stop(now+t+0.16);
+      });
+    }catch(e){}
+  }
+
+  // iconos play / stop (declarados antes de construir las filas)
+  const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
+  const ICON_STOP = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+
+  // --- Render inicial de la rejilla ---
+  const grid = document.getElementById("grid");
+  motos.forEach(m => grid.appendChild(buildRow(m)));
+
+  function buildRow(m){
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.setProperty("--moto", m.color);
+    row.dataset.id = m.id;
+    row.innerHTML = `
+      <button class="start" aria-label="Iniciar o parar ${m.name}">
+        <span class="glyph"></span>
+        <span class="hint"></span>
+      </button>
+      <div class="name-cell">
+        <span class="lbl">Moto</span>
+        <div class="name-row">
+          <span class="swatch" style="background:${m.color}" title="Cambiar color">
+            <input type="color" value="${m.color}" aria-label="Color de ${m.name}">
+          </span>
+          <input class="name" value="${m.name}" maxlength="20" aria-label="Nombre de la moto">
+        </div>
+      </div>
+      <div class="right"></div>
+    `;
+
+    // botón start/stop
+    row.querySelector(".start").addEventListener("click", () => toggle(m.id));
+
+    // nombre editable
+    const nameInput = row.querySelector(".name");
+    nameInput.addEventListener("input", () => { m.name = nameInput.value; save(); });
+
+    // color editable
+    const colorInput = row.querySelector('input[type="color"]');
+    colorInput.addEventListener("input", () => {
+      m.color = colorInput.value;
+      row.style.setProperty("--moto", m.color);
+      row.querySelector(".swatch").style.background = m.color;
+      save();
+    });
+
+    renderRight(row, m);
+    renderStart(row, m);
+    return row;
+  }
+
+  function rowOf(id){ return grid.querySelector(`.row[data-id="${id}"]`); }
+
+  function toggle(id){
+    const m = motos.find(x => x.id === id);
+    if(m.endTime === null){
+      m.endTime = Date.now() + m.minutes * 60000;   // arranca
+    } else {
+      m.endTime = null;                              // reinicia -> vuelve el selector
+    }
+    save();
+    const row = rowOf(id);
+    renderRight(row, m);
+    renderStart(row, m);
+    tick(); // refresco inmediato
+  }
+
+  function pickMinutes(id, mins){
+    const m = motos.find(x => x.id === id);
+    if(m.endTime !== null) return;
+    m.minutes = mins; save();
+    renderRight(rowOf(id), m);
+  }
+
+  // iconos play / stop
+
+  function renderStart(row, m){
+    const running = m.endTime !== null;
+    row.querySelector(".glyph").innerHTML = running ? ICON_STOP : ICON_PLAY;
+    row.querySelector(".hint").textContent = running ? "Parar" : "Empezar";
+  }
+
+  function renderRight(row, m){
+    const right = row.querySelector(".right");
+    if(m.endTime === null){
+      // Selector de tiempos
+      right.innerHTML = `<div class="selector">${
+        DURATIONS.map(d => `
+          <button class="chip ${d===m.minutes?"sel":""}" data-min="${d}">
+            ${d < 60 ? d : "1"}<small>${d < 60 ? "min" : "hora"}</small>
+          </button>`).join("")
+      }</div>`;
+      right.querySelectorAll(".chip").forEach(c =>
+        c.addEventListener("click", () => pickMinutes(m.id, +c.dataset.min)));
+    } else {
+      // Cuenta atrás
+      right.innerHTML = `
+        <div class="countdown">
+          <div class="cd-top">
+            <span class="cd-time">--:--</span>
+            <span class="cd-status">En marcha</span>
+          </div>
+          <div class="cd-bar"><div class="cd-fill" style="width:100%"></div></div>
+        </div>`;
+    }
+  }
+
+  // --- Bucle de reloj: recalcula desde endTime, no descuenta a mano ---
+  function fmt(ms){
+    const s = Math.max(0, Math.round(ms/1000));
+    return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+  }
+
+  const alerted = new Set();
+
+  function tick(){
+    const now = Date.now();
+    // reloj de cabecera
+    const d = new Date();
+    document.getElementById("clock").textContent =
+      [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,"0")).join(":");
+
+    motos.forEach(m => {
+      const row = rowOf(m.id);
+      if(m.endTime === null){ row.classList.remove("running","done"); return; }
+
+      const total = m.minutes * 60000;
+      const remaining = m.endTime - now;
+      const timeEl = row.querySelector(".cd-time");
+      const statusEl = row.querySelector(".cd-status");
+      const fillEl = row.querySelector(".cd-fill");
+      if(!timeEl) return;
+
+      row.classList.add("running");
+
+      if(remaining > 0){
+        row.classList.remove("done");
+        alerted.delete(m.id);
+        timeEl.textContent = fmt(remaining);
+        statusEl.textContent = "En marcha";
+        fillEl.style.width = Math.max(0, (remaining/total)*100) + "%";
+      } else {
+        // tiempo agotado -> aviso + cronómetro de tiempo extra
+        row.classList.add("done");
+        timeEl.textContent = "+" + fmt(-remaining);
+        statusEl.textContent = "¡Tiempo!";
+        fillEl.style.width = "100%";
+        if(!alerted.has(m.id)){ alerted.add(m.id); beep(); }
+      }
+    });
+  }
+  setInterval(tick, 250);
+  tick();
+
+  // --- Sonido toggle ---
+  const soundBtn = document.getElementById("soundBtn");
+  const soundLbl = document.getElementById("soundLbl");
+  function toggleSound(){
+    soundOn = !soundOn;
+    soundBtn.classList.toggle("off", !soundOn);
+    soundLbl.textContent = soundOn ? "Aviso sonoro" : "Sonido apagado";
+    if(soundOn){ try{ (audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)()).resume(); }catch(e){} }
+  }
+  soundBtn.addEventListener("click", toggleSound);
+  soundBtn.addEventListener("keydown", e => { if(e.key===" "||e.key==="Enter"){ e.preventDefault(); toggleSound(); }});
+
+})();
+</script>
+</body>
+</html>
