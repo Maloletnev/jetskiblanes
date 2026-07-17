@@ -180,28 +180,50 @@
     { id:"m6", name:"Moto 6", color:"#e11d48" },
   ];
   const DURATIONS = [15, 30, 45, 60];
-  const STORAGE_KEY = "jetskiblanes_state_v1";
+  const API = "https://jetskiblanes-api-eahac4huh7bdc7bd.spaincentral-01.azurewebsites.net/api/motos";
 
-  let motos = load();
+  let motos = DEFAULTS.map(d => ({ ...d, minutes: 15, endTime: null }));
 
-  function load(){
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e){}
-    return DEFAULTS.map(d => ({
-      ...d,
-      name:  saved[d.id]?.name  ?? d.name,
-      color: saved[d.id]?.color ?? d.color,
-      minutes: saved[d.id]?.minutes ?? 15,
-      endTime: saved[d.id]?.endTime ?? null,
-    }));
-  }
-  function save(){
+  // Guarda una moto en la API
+  async function saveRemote(m){
     try {
-      const out = {};
-      motos.forEach(m => out[m.id] = {name:m.name,color:m.color,minutes:m.minutes,endTime:m.endTime});
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(out));
-    } catch(e){}
+      await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(m)
+      });
+    } catch(e) { console.warn("Error guardando:", e); }
   }
+
+  // Sincroniza el estado de todas las motos desde la API
+  async function syncRemote(){
+    try {
+      const res = await fetch(API);
+      if(!res.ok) return;
+      const data = await res.json();
+      if(!Array.isArray(data) || data.length === 0) return;
+      data.forEach(remote => {
+        const m = motos.find(x => x.id === remote.id);
+        if(!m) return;
+        m.name    = remote.name    ?? m.name;
+        m.color   = remote.color   ?? m.color;
+        m.minutes = remote.minutes ?? m.minutes;
+        m.endTime = remote.endTime ?? null;
+        // Actualizar UI
+        const row = rowOf(m.id);
+        if(!row) return;
+        row.style.setProperty("--moto", m.color);
+        row.querySelector(".swatch").style.background = m.color;
+        row.querySelector("input.name").value = m.name;
+        renderRight(row, m);
+        renderStart(row, m);
+      });
+    } catch(e) { console.warn("Error sincronizando:", e); }
+  }
+
+  // Sincronizar cada 2 segundos
+  setInterval(syncRemote, 2000);
+  syncRemote();
 
   let soundOn = true, audioCtx = null;
   function beep(){
@@ -247,13 +269,13 @@
     `;
     row.querySelector(".start").addEventListener("click", () => toggle(m.id));
     const nameInput = row.querySelector(".name");
-    nameInput.addEventListener("input", () => { m.name = nameInput.value; save(); });
+    nameInput.addEventListener("change", () => { m.name = nameInput.value; saveRemote(m); });
     const colorInput = row.querySelector('input[type="color"]');
-    colorInput.addEventListener("input", () => {
+    colorInput.addEventListener("change", () => {
       m.color = colorInput.value;
       row.style.setProperty("--moto", m.color);
       row.querySelector(".swatch").style.background = m.color;
-      save();
+      saveRemote(m);
     });
     renderRight(row, m);
     renderStart(row, m);
@@ -265,7 +287,7 @@
   function toggle(id){
     const m = motos.find(x => x.id === id);
     m.endTime = m.endTime === null ? Date.now() + m.minutes * 60000 : null;
-    save();
+    saveRemote(m);
     const row = rowOf(id);
     renderRight(row, m);
     renderStart(row, m);
@@ -275,7 +297,8 @@
   function pickMinutes(id, mins){
     const m = motos.find(x => x.id === id);
     if(m.endTime !== null) return;
-    m.minutes = mins; save();
+    m.minutes = mins;
+    saveRemote(m);
     renderRight(rowOf(id), m);
   }
 
