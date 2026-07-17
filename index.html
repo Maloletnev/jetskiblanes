@@ -205,18 +205,36 @@
       data.forEach(remote => {
         const m = motos.find(x => x.id === remote.id);
         if(!m) return;
+        const row = rowOf(m.id);
+        if(!row) return;
+
+        const nameChanged  = remote.name    !== m.name;
+        const colorChanged = remote.color   !== m.color;
+        const minsChanged  = remote.minutes !== m.minutes;
+        const timeChanged  = remote.endTime !== m.endTime;
+
         m.name    = remote.name    ?? m.name;
         m.color   = remote.color   ?? m.color;
         m.minutes = remote.minutes ?? m.minutes;
         m.endTime = remote.endTime ?? null;
-        // Actualizar UI
-        const row = rowOf(m.id);
-        if(!row) return;
-        row.style.setProperty("--moto", m.color);
-        row.querySelector(".swatch").style.background = m.color;
-        row.querySelector("input.name").value = m.name;
-        renderRight(row, m);
-        renderStart(row, m);
+
+        if(colorChanged){
+          row.style.setProperty("--moto", m.color);
+          row.querySelector(".swatch").style.background = m.color;
+        }
+        if(nameChanged){
+          row.querySelector("input.name").value = m.name;
+        }
+        // Solo redibujar el panel derecho si cambió el estado de encendido/apagado
+        // (de null a valor o viceversa), no si solo cambia el tiempo restante
+        const wasRunning = row.classList.contains("running");
+        const isRunning  = m.endTime !== null;
+        if(timeChanged && wasRunning !== isRunning){
+          renderRight(row, m);
+          renderStart(row, m);
+        } else if(minsChanged && !isRunning){
+          renderRight(row, m);
+        }
       });
     } catch(e) { console.warn("Error sincronizando:", e); }
   }
