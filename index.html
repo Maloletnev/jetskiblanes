@@ -208,32 +208,33 @@
         const row = rowOf(m.id);
         if(!row) return;
 
-        const nameChanged  = remote.name    !== m.name;
-        const colorChanged = remote.color   !== m.color;
-        const minsChanged  = remote.minutes !== m.minutes;
-        const timeChanged  = remote.endTime !== m.endTime;
+        // Normalizar endTime a número o null en ambos lados
+        const remoteEnd = remote.endTime ? Number(remote.endTime) : null;
+        const localEnd  = m.endTime      ? Number(m.endTime)      : null;
 
+        const wasRunning = localEnd  !== null;
+        const isRunning  = remoteEnd !== null;
+        const stateChanged = wasRunning !== isRunning;
+
+        // Actualizar datos locales
         m.name    = remote.name    ?? m.name;
         m.color   = remote.color   ?? m.color;
         m.minutes = remote.minutes ?? m.minutes;
-        m.endTime = remote.endTime ?? null;
+        m.endTime = remoteEnd;
 
-        if(colorChanged){
+        if(remote.color && remote.color !== row.style.getPropertyValue("--moto").trim()){
           row.style.setProperty("--moto", m.color);
           row.querySelector(".swatch").style.background = m.color;
         }
-        if(nameChanged){
+        if(remote.name && remote.name !== row.querySelector("input.name").value){
           row.querySelector("input.name").value = m.name;
         }
-        // Solo redibujar el panel derecho si cambió el estado de encendido/apagado
-        // (de null a valor o viceversa), no si solo cambia el tiempo restante
-        const wasRunning = row.classList.contains("running");
-        const isRunning  = m.endTime !== null;
-        if(timeChanged && wasRunning !== isRunning){
+
+        // Solo redibujar si cambió entre corriendo/parado
+        if(stateChanged){
           renderRight(row, m);
           renderStart(row, m);
-        } else if(minsChanged && !isRunning){
-          renderRight(row, m);
+          tick(); // actualiza el tiempo inmediatamente, evita el --:--
         }
       });
     } catch(e) { console.warn("Error sincronizando:", e); }
@@ -338,13 +339,16 @@
       right.querySelectorAll(".chip").forEach(c =>
         c.addEventListener("click", () => pickMinutes(m.id, +c.dataset.min)));
     } else {
+      const total = m.minutes * 60000;
+      const remaining = Math.max(0, m.endTime - Date.now());
+      const pct = Math.max(0, (remaining / total) * 100);
       right.innerHTML = `
         <div class="countdown">
           <div class="cd-top">
-            <span class="cd-time">--:--</span>
+            <span class="cd-time">${fmt(remaining)}</span>
             <span class="cd-status">En marcha</span>
           </div>
-          <div class="cd-bar"><div class="cd-fill" style="width:100%"></div></div>
+          <div class="cd-bar"><div class="cd-fill" style="width:${pct}%"></div></div>
         </div>`;
     }
   }
