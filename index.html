@@ -228,7 +228,6 @@ function toggle(id){
     m.endTime=Date.now()+getCountdown(m.minutes);
   } else {
     m.endTime=null;
-    notifiedMotos.delete(id);
   }
   saveRemote(m);
   const row=rowOf(id);
