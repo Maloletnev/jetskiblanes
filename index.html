@@ -371,7 +371,8 @@ async function registerSW(){
 const notifBtn = document.createElement("div");
 notifBtn.className = "pill";
 notifBtn.style.cursor = "pointer";
-notifBtn.innerHTML = '<span style="font-size:16px">🔔</span><span>Activar notificaciones</span>';
+notifBtn.innerHTML = '<span style="font-size:20px">🔔</span>';
+notifBtn.title = "Activar notificaciones";
 notifBtn.addEventListener("click", async () => {
   if (!("Notification" in window)) {
     alert("Tu navegador no soporta notificaciones. En iPhone asegúrate de abrir la app desde la pantalla de inicio, no desde Safari.");
@@ -380,7 +381,8 @@ notifBtn.addEventListener("click", async () => {
   const p = await Notification.requestPermission();
   if (p === "granted") {
     await subscribePush();
-    notifBtn.innerHTML = '<span style="font-size:16px">✅</span><span>Notificaciones activas</span>';
+    notifBtn.innerHTML = '<span style="font-size:20px">🔔✅</span>';
+    notifBtn.title = "Notificaciones activas";
   } else {
     alert("Has denegado las notificaciones. Ve a Ajustes > JetSki Blanes > Notificaciones para activarlas.");
   }
