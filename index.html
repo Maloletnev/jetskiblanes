@@ -160,6 +160,15 @@ syncRemote();
 
 // ── Sonido ──
 let soundOn=true, audioCtx=null;
+
+// Inicializar AudioContext con el primer toque del usuario
+document.addEventListener("touchstart", function initAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    audioCtx.resume();
+  }
+  document.removeEventListener("touchstart", initAudio);
+}, {once: true});
 function beep(){
   if(!soundOn) return;
   try{
