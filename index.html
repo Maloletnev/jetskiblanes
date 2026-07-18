@@ -180,6 +180,17 @@
     { id:"m6", name:"Yamaha White", color:"#ffffff" },
   ];
   const DURATIONS = [15, 30, 45, 60];
+
+const COUNTDOWN_MINUTES = {
+  15: 13,
+  30: 26,
+  45: 40,
+  60: 50
+};
+
+function getCountdownMinutes(selectedMinutes){
+  return COUNTDOWN_MINUTES[selectedMinutes] ?? selectedMinutes;
+}
   const API = "https://jetskiblanes-api-eahac4huh7bdc7bd.spaincentral-01.azurewebsites.net/api/motos";
 
   let motos = DEFAULTS.map(d => ({ ...d, minutes: 15, endTime: null }));
@@ -304,14 +315,22 @@
   function rowOf(id){ return grid.querySelector(`.row[data-id="${id}"]`); }
 
   function toggle(id){
-    const m = motos.find(x => x.id === id);
-    m.endTime = m.endTime === null ? Date.now() + m.minutes * 60000 : null;
-    saveRemote(m);
-    const row = rowOf(id);
-    renderRight(row, m);
-    renderStart(row, m);
-    tick();
+  const m = motos.find(x => x.id === id);
+
+  if(m.endTime === null){
+    const countdownMinutes = getCountdownMinutes(m.minutes);
+    m.endTime = Date.now() + countdownMinutes * 60000;
+  } else {
+    m.endTime = null;
   }
+
+  saveRemote(m);
+
+  const row = rowOf(id);
+  renderRight(row, m);
+  renderStart(row, m);
+  tick();
+}
 
   function pickMinutes(id, mins){
     const m = motos.find(x => x.id === id);
@@ -339,7 +358,7 @@
       right.querySelectorAll(".chip").forEach(c =>
         c.addEventListener("click", () => pickMinutes(m.id, +c.dataset.min)));
     } else {
-      const total = m.minutes * 60000;
+      const total = getCountdownMinutes(m.minutes) * 60000;
       const remaining = Math.max(0, m.endTime - Date.now());
       const pct = Math.max(0, (remaining / total) * 100);
       right.innerHTML = `
@@ -369,7 +388,7 @@
     motos.forEach(m => {
       const row = rowOf(m.id);
       if(m.endTime === null){ row.classList.remove("running","done"); return; }
-      const total = m.minutes * 60000;
+      const total = getCountdownMinutes(m.minutes) * 60000;
       const remaining = m.endTime - now;
       const timeEl = row.querySelector(".cd-time");
       const statusEl = row.querySelector(".cd-status");
