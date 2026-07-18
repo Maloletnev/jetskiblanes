@@ -3,9 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#08182b">
+<meta name="theme-color" content="#000000">
 <title>JetSki Blanes · Control de motos</title>
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/logo192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="JetSki Blanes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
@@ -173,25 +177,14 @@
   const ICON_STOP = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
 
   const DEFAULTS = [
-    { id:"m1", name:"Yamaha Verde", color:"#22c55e" },
-    { id:"m2", name:"Yamaha Azul", color:"#3b5bdb" },
-    { id:"m3", name:"Yamaha Verde New", color:"#166534" },
-    { id:"m4", name:"Yamaha BabyBlue", color:"#38bdf8" },
-    { id:"m5", name:"Yamaha Instructor", color:"#000000" },
-    { id:"m6", name:"Yamaha White", color:"#ffffff" },
+    { id:"m1", name:"Moto 1", color:"#22c55e" },
+    { id:"m2", name:"Moto 2", color:"#3b5bdb" },
+    { id:"m3", name:"Moto 3", color:"#e8187a" },
+    { id:"m4", name:"Moto 4", color:"#38bdf8" },
+    { id:"m5", name:"Moto 5", color:"#f59e0b" },
+    { id:"m6", name:"Moto 6", color:"#e11d48" },
   ];
   const DURATIONS = [15, 30, 45, 60];
-
-const COUNTDOWN_MINUTES = {
-  15: 13,
-  30: 26,
-  45: 40,
-  60: 50
-};
-
-function getCountdownMinutes(selectedMinutes){
-  return COUNTDOWN_MINUTES[selectedMinutes] ?? selectedMinutes;
-}
   const API = "https://jetskiblanes-api-eahac4huh7bdc7bd.spaincentral-01.azurewebsites.net/api/motos";
 
   let motos = DEFAULTS.map(d => ({ ...d, minutes: 15, endTime: null }));
@@ -316,22 +309,14 @@ function getCountdownMinutes(selectedMinutes){
   function rowOf(id){ return grid.querySelector(`.row[data-id="${id}"]`); }
 
   function toggle(id){
-  const m = motos.find(x => x.id === id);
-
-  if(m.endTime === null){
-    const countdownMinutes = getCountdownMinutes(m.minutes);
-    m.endTime = Date.now() + countdownMinutes * 60000;
-  } else {
-    m.endTime = null;
+    const m = motos.find(x => x.id === id);
+    m.endTime = m.endTime === null ? Date.now() + m.minutes * 60000 : null;
+    saveRemote(m);
+    const row = rowOf(id);
+    renderRight(row, m);
+    renderStart(row, m);
+    tick();
   }
-
-  saveRemote(m);
-
-  const row = rowOf(id);
-  renderRight(row, m);
-  renderStart(row, m);
-  tick();
-}
 
   function pickMinutes(id, mins){
     const m = motos.find(x => x.id === id);
@@ -359,7 +344,7 @@ function getCountdownMinutes(selectedMinutes){
       right.querySelectorAll(".chip").forEach(c =>
         c.addEventListener("click", () => pickMinutes(m.id, +c.dataset.min)));
     } else {
-      const total = getCountdownMinutes(m.minutes) * 60000;
+      const total = m.minutes * 60000;
       const remaining = Math.max(0, m.endTime - Date.now());
       const pct = Math.max(0, (remaining / total) * 100);
       right.innerHTML = `
@@ -389,7 +374,7 @@ function getCountdownMinutes(selectedMinutes){
     motos.forEach(m => {
       const row = rowOf(m.id);
       if(m.endTime === null){ row.classList.remove("running","done"); return; }
-      const total = getCountdownMinutes(m.minutes) * 60000;
+      const total = m.minutes * 60000;
       const remaining = m.endTime - now;
       const timeEl = row.querySelector(".cd-time");
       const statusEl = row.querySelector(".cd-status");
@@ -424,6 +409,109 @@ function getCountdownMinutes(selectedMinutes){
   }
   soundBtn.addEventListener("click", toggleSound);
   soundBtn.addEventListener("keydown", e => { if(e.key===" "||e.key==="Enter"){ e.preventDefault(); toggleSound(); }});
+
+  // ── PWA: Service Worker + Notificaciones Push ──
+  const API_BASE = "https://jetskiblanes-api-eahac4huh7bdc7bd.spaincentral-01.azurewebsites.net/api";
+  let swRegistration = null;
+  const notifiedMotos = new Set();
+
+  async function registerSW() {
+    if (!("serviceWorker" in navigator)) return;
+    try {
+      swRegistration = await navigator.serviceWorker.register("/sw.js");
+      console.log("Service Worker registrado");
+      await askNotificationPermission();
+    } catch(e) { console.warn("Error SW:", e); }
+  }
+
+  async function askNotificationPermission() {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      await subscribePush();
+    } else if (Notification.permission !== "denied") {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") await subscribePush();
+    }
+  }
+
+  async function subscribePush() {
+    if (!swRegistration) return;
+    try {
+      // Obtener la clave pública del servidor
+      const res = await fetch(`${API_BASE}/vapidkey`);
+      const { publicKey } = await res.json();
+
+      // Convertir la clave pública a formato que entiende el navegador
+      const appServerKey = urlBase64ToUint8Array(publicKey);
+
+      // Suscribirse o recuperar suscripción existente
+      let subscription = await swRegistration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await swRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: appServerKey
+        });
+      }
+
+      // Guardar la suscripción en Azure
+      await fetch(`${API_BASE}/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription)
+      });
+      console.log("Suscripción push registrada");
+    } catch(e) { console.warn("Error suscripción push:", e); }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+
+  async function sendPushNotification(motoName) {
+    try {
+      await fetch(`${API_BASE}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motoName })
+      });
+    } catch(e) { console.warn("Error enviando notificación:", e); }
+  }
+
+  // Modificar el tick para enviar notificación push cuando acaba el tiempo
+  const originalTick = tick;
+  const tickWithNotify = function() {
+    const now = Date.now();
+    motos.forEach(m => {
+      if (m.endTime === null) return;
+      const remaining = m.endTime - now;
+      if (remaining <= 0 && !notifiedMotos.has(m.id)) {
+        notifiedMotos.add(m.id);
+        sendPushNotification(m.name);
+      }
+      // Limpiar el set si la moto se reinicia
+      if (m.endTime === null && notifiedMotos.has(m.id)) {
+        notifiedMotos.delete(m.id);
+      }
+    });
+  };
+
+  // Sobrescribir tick para incluir lógica de notificaciones
+  const _tick = tick;
+  tick = function() {
+    _tick();
+    tickWithNotify();
+  };
+
+  // Limpiar notificados cuando una moto se para
+  const _toggle = toggle;
+  // eslint-disable-next-line no-global-assign
+  window._cleanNotified = function(id) { notifiedMotos.delete(id); };
+
+  // Registrar el service worker al cargar
+  registerSW();
 })();
 </script>
 </body>
