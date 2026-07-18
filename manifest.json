@@ -1,6 +1,6 @@
 {
   "name": "Jetski Blanes",
-  "short_name": "JetSki Blanes",
+  "short_name": "Jetski Blanes",
   "description": "Control de tiempos de alquiler de motos de agua",
   "start_url": "/",
   "display": "standalone",
