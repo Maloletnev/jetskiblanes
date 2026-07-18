@@ -299,7 +299,7 @@ function tick(){
     } else {
       row.classList.add("done");
       timeEl.textContent="+"+fmt(-remaining);
-      statusEl.textContent="¡Tiempo!";
+      statusEl.textContent="Tiempo!";
       fillEl.style.width="100%";
       if(!alerted.has(m.id)){alerted.add(m.id);beep();}
     }
