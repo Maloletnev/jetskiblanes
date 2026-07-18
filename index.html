@@ -118,7 +118,6 @@ function getCountdown(mins){ return (COUNTDOWN_MINUTES[mins] ?? mins) * 60000; }
 
 const API = "https://jetskiblanes-api-eahac4huh7bdc7bd.spaincentral-01.azurewebsites.net/api";
 let motos = DEFAULTS.map(d => ({ ...d, minutes:15, endTime:null }));
-const notifiedMotos = new Set();
 
 // ── API helpers ──
 async function saveRemote(m){
@@ -304,11 +303,6 @@ function tick(){
       statusEl.textContent="¡Tiempo!";
       fillEl.style.width="100%";
       if(!alerted.has(m.id)){alerted.add(m.id);beep();}
-      // Notificación push
-      if(!notifiedMotos.has(m.id)){
-        notifiedMotos.add(m.id);
-        sendPushNotification(m.name);
-      }
     }
   });
 }
@@ -329,16 +323,6 @@ soundBtn.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preve
 // ── Push Notifications ──
 const API_PUSH = API;
 let swRegistration=null;
-
-async function sendPushNotification(motoName){
-  try{
-    await fetch(`${API_PUSH}/notify`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({motoName})
-    });
-  }catch(e){console.warn("Error notificación:",e);}
-}
 
 function urlBase64ToUint8Array(b){
   const padding="=".repeat((4-b.length%4)%4);
